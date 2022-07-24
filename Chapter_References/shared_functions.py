@@ -135,56 +135,56 @@ def get_train_test_set(transactions_df,
                        delta_train=7,delta_delay=7,delta_test=7,
                        sampling_ratio=1.0,
                        random_state=0):
-    
+
     # Get the training set data
     train_df = transactions_df[(transactions_df.TX_DATETIME>=start_date_training) &
                                (transactions_df.TX_DATETIME<start_date_training+datetime.timedelta(days=delta_train))]
-    
+
     # Get the test set data
     test_df = []
-    
+
     # Note: Cards known to be compromised after the delay period are removed from the test set
     # That is, for each test day, all frauds known at (test_day-delay_period) are removed
-    
+
     # First, get known defrauded customers from the training set
     known_defrauded_customers = set(train_df[train_df.TX_FRAUD==1].CUSTOMER_ID)
-    
+
     # Get the relative starting day of training set (easier than TX_DATETIME to collect test data)
     start_tx_time_days_training = train_df.TX_TIME_DAYS.min()
-    
+
     # Then, for each day of the test set
     for day in range(delta_test):
-    
+
         # Get test data for that day
         test_df_day = transactions_df[transactions_df.TX_TIME_DAYS==start_tx_time_days_training+
                                                                     delta_train+delta_delay+
                                                                     day]
-        
+
         # Compromised cards from that test day, minus the delay period, are added to the pool of known defrauded customers
         test_df_day_delay_period = transactions_df[transactions_df.TX_TIME_DAYS==start_tx_time_days_training+
                                                                                 delta_train+
                                                                                 day-1]
-        
+
         new_defrauded_customers = set(test_df_day_delay_period[test_df_day_delay_period.TX_FRAUD==1].CUSTOMER_ID)
         known_defrauded_customers = known_defrauded_customers.union(new_defrauded_customers)
-        
+
         test_df_day = test_df_day[~test_df_day.CUSTOMER_ID.isin(known_defrauded_customers)]
-        
+
         test_df.append(test_df_day)
-        
+
     test_df = pd.concat(test_df)
-    
+
     # If subsample
     if sampling_ratio<1:
-        
+
         train_df_frauds=train_df[train_df.TX_FRAUD==1].sample(frac=sampling_ratio, random_state=random_state)
         train_df_genuine=train_df[train_df.TX_FRAUD==0].sample(frac=sampling_ratio, random_state=random_state)
         train_df=pd.concat([train_df_frauds,train_df_genuine])
-        
+
     # Sort data sets by ascending order of transaction ID
     train_df=train_df.sort_values('TRANSACTION_ID')
     test_df=test_df.sort_values('TRANSACTION_ID')
-    
+
     return (train_df, test_df)
                                
 
@@ -197,61 +197,61 @@ def get_train_delay_test_set(transactions_df,
                              delta_train=7,delta_delay=7,delta_test=7,
                              sampling_ratio=1.0,
                              random_state=0):
-    
+
     # Get the training set data
     train_df = transactions_df[(transactions_df.TX_DATETIME>=start_date_training) &
                                (transactions_df.TX_DATETIME<start_date_training+datetime.timedelta(days=delta_train))]
-    
+
     # Get the delay set data
     delay_df = transactions_df[(transactions_df.TX_DATETIME>=start_date_training+datetime.timedelta(days=delta_train)) &
                                (transactions_df.TX_DATETIME<start_date_training+datetime.timedelta(days=delta_train)+
                                                                                +datetime.timedelta(days=delta_delay))]
-    
+
     # Get the test set data
     test_df = []
-    
+
     # Note: Cards known to be compromised after the delay period are removed from the test set
     # That is, for each test day, all frauds known at (test_day-delay_period) are removed
-    
+
     # First, get known defrauded customers from the training set
     known_defrauded_customers = set(train_df[train_df.TX_FRAUD==1].CUSTOMER_ID)
-    
+
     # Get the relative starting day of training set (easier than TX_DATETIME to collect test data)
     start_tx_time_days_training = train_df.TX_TIME_DAYS.min()
-    
+
     # Then, for each day of the test set
     for day in range(delta_test):
-    
+
         # Get test data for that day
         test_df_day = transactions_df[transactions_df.TX_TIME_DAYS==start_tx_time_days_training+
                                                                     delta_train+delta_delay+
                                                                     day]
-        
+
         # Compromised cards from that test day, minus the delay period, are added to the pool of known defrauded customers
         test_df_day_delay_period = transactions_df[transactions_df.TX_TIME_DAYS==start_tx_time_days_training+
                                                                                 delta_train+
                                                                                 day-1]
-        
+
         new_defrauded_customers = set(test_df_day_delay_period[test_df_day_delay_period.TX_FRAUD==1].CUSTOMER_ID)
         known_defrauded_customers = known_defrauded_customers.union(new_defrauded_customers)
-        
+
         test_df_day = test_df_day[~test_df_day.CUSTOMER_ID.isin(known_defrauded_customers)]
-        
+
         test_df.append(test_df_day)
-        
+
     test_df = pd.concat(test_df)
-    
+
     # If subsample
     if sampling_ratio<1:
-        
+
         train_df_frauds=train_df[train_df.TX_FRAUD==1].sample(frac=sampling_ratio, random_state=random_state)
         train_df_genuine=train_df[train_df.TX_FRAUD==0].sample(frac=sampling_ratio, random_state=random_state)
         train_df=pd.concat([train_df_frauds,train_df_genuine])
-        
+
     # Sort data sets by ascending order of transaction ID
     train_df=train_df.sort_values('TRANSACTION_ID')
     test_df=test_df.sort_values('TRANSACTION_ID')
-    
+
     return (train_df, delay_df, test_df)
 
 
@@ -307,7 +307,7 @@ def fit_model_and_get_predictions(classifier, train_df, test_df,
     # By default, scales input data
     if scale:
         (train_df, test_df)=scaleData(train_df,test_df,input_features)
-    
+
     # We first train the classifier using the `fit` method, and pass as arguments the input and output features
     start_time=time.time()
     classifier.fit(train_df[input_features], train_df[output_feature])
@@ -318,19 +318,16 @@ def fit_model_and_get_predictions(classifier, train_df, test_df,
     start_time=time.time()
     predictions_test=classifier.predict_proba(test_df[input_features])[:,1]
     prediction_execution_time=time.time()-start_time
-    
+
     predictions_train=classifier.predict_proba(train_df[input_features])[:,1]
 
-    # The result is returned as a dictionary containing the fitted models, 
-    # and the predictions on the training and test sets
-    model_and_predictions_dictionary = {'classifier': classifier,
-                                        'predictions_test': predictions_test,
-                                        'predictions_train': predictions_train,
-                                        'training_execution_time': training_execution_time,
-                                        'prediction_execution_time': prediction_execution_time
-                                       }
-    
-    return model_and_predictions_dictionary
+    return {
+        'classifier': classifier,
+        'predictions_test': predictions_test,
+        'predictions_train': predictions_train,
+        'training_execution_time': training_execution_time,
+        'prediction_execution_time': prediction_execution_time,
+    }
 
 
 # In[ ]:
@@ -375,38 +372,35 @@ def card_precision_top_k_day(df_day,top_k):
 
 def card_precision_top_k(predictions_df, top_k, remove_detected_compromised_cards=True):
 
-    # Sort days by increasing order
-    list_days=list(predictions_df['TX_TIME_DAYS'].unique())
-    list_days.sort()
-    
+    list_days = sorted(predictions_df['TX_TIME_DAYS'].unique())
     # At first, the list of detected compromised cards is empty
     list_detected_compromised_cards = []
-    
+
     card_precision_top_k_per_day_list = []
     nb_compromised_cards_per_day = []
-    
+
     # For each day, compute precision top k
     for day in list_days:
-        
+
         df_day = predictions_df[predictions_df['TX_TIME_DAYS']==day]
         df_day = df_day[['predictions', 'CUSTOMER_ID', 'TX_FRAUD']]
-        
+
         # Let us remove detected compromised cards from the set of daily transactions
         df_day = df_day[df_day.CUSTOMER_ID.isin(list_detected_compromised_cards)==False]
-        
+
         nb_compromised_cards_per_day.append(len(df_day[df_day.TX_FRAUD==1].CUSTOMER_ID.unique()))
-        
+
         detected_compromised_cards, card_precision_top_k = card_precision_top_k_day(df_day,top_k)
-        
+
         card_precision_top_k_per_day_list.append(card_precision_top_k)
-        
+
         # Let us update the list of detected compromised cards
         if remove_detected_compromised_cards:
             list_detected_compromised_cards.extend(detected_compromised_cards)
-        
+
     # Compute the mean
     mean_card_precision_top_k = np.array(card_precision_top_k_per_day_list).mean()
-    
+
     # Returns precision top k per day as a list, and resulting mean
     return nb_compromised_cards_per_day,card_precision_top_k_per_day_list,mean_card_precision_top_k
 
@@ -445,18 +439,18 @@ def performance_assessment(predictions_df, output_feature='TX_FRAUD',
     
     AUC_ROC = metrics.roc_auc_score(predictions_df[output_feature], predictions_df[prediction_feature])
     AP = metrics.average_precision_score(predictions_df[output_feature], predictions_df[prediction_feature])
-    
+
     performances = pd.DataFrame([[AUC_ROC, AP]], 
                            columns=['AUC ROC','Average precision'])
-    
+
     for top_k in top_k_list:
-    
+
         _, _, mean_card_precision_top_k = card_precision_top_k(predictions_df, top_k)
-        performances['Card Precision@'+str(top_k)]=mean_card_precision_top_k
-        
+        performances[f'Card Precision@{str(top_k)}'] = mean_card_precision_top_k
+
     if rounded:
         performances = performances.round(3)
-    
+
     return performances
 
 
@@ -522,10 +516,10 @@ def execution_times_model_collection(fitted_models_and_predictions_dictionary):
 # Getting classes from a vector of fraud probabilities and a threshold
 def get_class_from_fraud_probability(fraud_probabilities, threshold=0.5):
     
-    predicted_classes = [0 if fraud_probability<threshold else 1 
-                         for fraud_probability in fraud_probabilities]
-
-    return predicted_classes
+    return [
+        0 if fraud_probability < threshold else 1
+        for fraud_probability in fraud_probabilities
+    ]
 
 
 # ### threshold_based_metrics
@@ -538,47 +532,62 @@ def get_class_from_fraud_probability(fraud_probabilities, threshold=0.5):
 def threshold_based_metrics(fraud_probabilities, true_label, thresholds_list):
     
     results = []
-    
+
     for threshold in thresholds_list:
-    
+
         predicted_classes = get_class_from_fraud_probability(fraud_probabilities, threshold=threshold)
-    
+
         (TN, FP, FN, TP) = metrics.confusion_matrix(true_label, predicted_classes).ravel()
-    
+
         MME = (FP+FN)/(TN+FP+FN+TP)
-    
+
         TPR = TP/(TP+FN)
         TNR = TN/(TN+FP)
-    
+
         FPR = FP/(TN+FP)
         FNR = FN/(TP+FN)
-        
+
         BER = 1/2*(FPR+FNR)
-        
+
         Gmean = np.sqrt(TPR*TNR)
-    
+
         precision = 1 # 1 if TP+FP=0
         FDR = 1 # 1 if TP+FP=0
-        
+
         if TP+FP>0:
             precision = TP/(TP+FP)
             FDR=FP/(TP+FP)
-        
+
         NPV = 1 # 1 if TN+FN=0
         FOR = 1 # 1 if TN+FN=0
-        
+
         if TN+FN>0:
             NPV = TN/(TN+FN)
             FOR = FN/(TN+FN)
-            
-        
+
+
         F1_score = 2*(precision*TPR)/(precision+TPR)
-    
+
         results.append([threshold, MME, TPR, TNR, FPR, FNR, BER, Gmean, precision, NPV, FDR, FOR, F1_score])
-        
-    results_df = pd.DataFrame(results,columns=['Threshold' ,'MME', 'TPR', 'TNR', 'FPR', 'FNR', 'BER', 'G-mean', 'Precision', 'NPV', 'FDR', 'FOR', 'F1 Score'])
-    
-    return results_df
+
+    return pd.DataFrame(
+        results,
+        columns=[
+            'Threshold',
+            'MME',
+            'TPR',
+            'TNR',
+            'FPR',
+            'FNR',
+            'BER',
+            'G-mean',
+            'Precision',
+            'NPV',
+            'FDR',
+            'FOR',
+            'F1 Score',
+        ],
+    )
 
 
 # In[ ]:
@@ -598,31 +607,31 @@ def get_summary_performances(performances_df, parameter_column_name="Parameters 
 
     metrics = ['AUC ROC','Average precision','Card Precision@100']
     performances_results=pd.DataFrame(columns=metrics)
-    
+
     performances_df.reset_index(drop=True,inplace=True)
 
     best_estimated_parameters = []
     validation_performance = []
     test_performance = []
-    
+
     for metric in metrics:
-    
+
         index_best_validation_performance = performances_df.index[np.argmax(performances_df[metric+' Validation'].values)]
-    
+
         best_estimated_parameters.append(performances_df[parameter_column_name].iloc[index_best_validation_performance])
-        
+
         validation_performance.append(
                 str(round(performances_df[metric+' Validation'].iloc[index_best_validation_performance],3))+
                 '+/-'+
                 str(round(performances_df[metric+' Validation'+' Std'].iloc[index_best_validation_performance],2))
         )
-        
+
         test_performance.append(
                 str(round(performances_df[metric+' Test'].iloc[index_best_validation_performance],3))+
                 '+/-'+
                 str(round(performances_df[metric+' Test'+' Std'].iloc[index_best_validation_performance],2))
         )
-    
+
     performances_results.loc["Best estimated parameters"]=best_estimated_parameters
     performances_results.loc["Validation performance"]=validation_performance
     performances_results.loc["Test performance"]=test_performance
@@ -631,11 +640,11 @@ def get_summary_performances(performances_df, parameter_column_name="Parameters 
     optimal_parameters = []
 
     for metric in ['AUC ROC Test','Average precision Test','Card Precision@100 Test']:
-    
+
         index_optimal_test_performance = performances_df.index[np.argmax(performances_df[metric].values)]
-    
+
         optimal_parameters.append(performances_df[parameter_column_name].iloc[index_optimal_test_performance])
-    
+
         optimal_test_performance.append(
                 str(round(performances_df[metric].iloc[index_optimal_test_performance],3))+
                 '+/-'+
@@ -644,7 +653,7 @@ def get_summary_performances(performances_df, parameter_column_name="Parameters 
 
     performances_results.loc["Optimal parameter(s)"]=optimal_parameters
     performances_results.loc["Optimal test performance"]=optimal_test_performance
-    
+
     return performances_results
 
 
@@ -657,7 +666,7 @@ def get_summary_performances(performances_df, parameter_column_name="Parameters 
 
 def model_selection_performances(performances_df_dictionary,
                                  performance_metric='AUC ROC'):
-    
+
     # Note: max_depth of 50 is similar to None
     default_parameters_dictionary={
         "Decision Tree": 50,
@@ -665,42 +674,42 @@ def model_selection_performances(performances_df_dictionary,
         "Random Forest": "100/50",
         "XGBoost": "100/0.1/2"
     }
-    
+
     mean_performances_dictionary={
         "Default parameters": [],
         "Best validation parameters": [],
         "Optimal parameters": []
     }
-    
+
     std_performances_dictionary={
         "Default parameters": [],
         "Best validation parameters": [],
         "Optimal parameters": []
     }
-    
+
     # For each model class
     for model_class, performances_df in performances_df_dictionary.items():
-        
+
         # Get the performances for the default paramaters
         default_performances=performances_df[performances_df['Parameters summary']==default_parameters_dictionary[model_class]]
         default_performances=default_performances.round(decimals=3)
-        
+
         mean_performances_dictionary["Default parameters"].append(default_performances[performance_metric+" Test"].values[0])
         std_performances_dictionary["Default parameters"].append(default_performances[performance_metric+" Test Std"].values[0])
-        
+
         # Get the performances for the best estimated parameters
         performances_summary=get_summary_performances(performances_df, parameter_column_name="Parameters summary")
         mean_std_performances=performances_summary.loc[["Test performance"]][performance_metric].values[0]
         mean_std_performances=mean_std_performances.split("+/-")
         mean_performances_dictionary["Best validation parameters"].append(float(mean_std_performances[0]))
         std_performances_dictionary["Best validation parameters"].append(float(mean_std_performances[1]))
-        
+
         # Get the performances for the boptimal parameters
         mean_std_performances=performances_summary.loc[["Optimal test performance"]][performance_metric].values[0]
         mean_std_performances=mean_std_performances.split("+/-")
         mean_performances_dictionary["Optimal parameters"].append(float(mean_std_performances[0]))
         std_performances_dictionary["Optimal parameters"].append(float(mean_std_performances[1]))
-        
+
     # Return the mean performances and their standard deviations    
     return (mean_performances_dictionary,std_performances_dictionary)
 
@@ -720,44 +729,44 @@ def model_selection_performances(performances_df_dictionary,
                                                 "Random Forest": "100/50",
                                                 "XGBoost": "100/0.1/3"
                                             }):
-    
+
     mean_performances_dictionary={
         "Default parameters": [],
         "Best validation parameters": [],
         "Optimal parameters": []
     }
-    
+
     std_performances_dictionary={
         "Default parameters": [],
         "Best validation parameters": [],
         "Optimal parameters": []
     }
-    
+
     # For each model class
     for model_class in model_classes:
-        
+
         performances_df=performances_df_dictionary[model_class]
-        
+
         # Get the performances for the default paramaters
         default_performances=performances_df[performances_df['Parameters summary']==default_parameters_dictionary[model_class]]
         default_performances=default_performances.round(decimals=3)
-        
+
         mean_performances_dictionary["Default parameters"].append(default_performances[performance_metric+" Test"].values[0])
         std_performances_dictionary["Default parameters"].append(default_performances[performance_metric+" Test Std"].values[0])
-        
+
         # Get the performances for the best estimated parameters
         performances_summary=get_summary_performances(performances_df, parameter_column_name="Parameters summary")
         mean_std_performances=performances_summary.loc[["Test performance"]][performance_metric].values[0]
         mean_std_performances=mean_std_performances.split("+/-")
         mean_performances_dictionary["Best validation parameters"].append(float(mean_std_performances[0]))
         std_performances_dictionary["Best validation parameters"].append(float(mean_std_performances[1]))
-        
+
         # Get the performances for the boptimal parameters
         mean_std_performances=performances_summary.loc[["Optimal test performance"]][performance_metric].values[0]
         mean_std_performances=mean_std_performances.split("+/-")
         mean_performances_dictionary["Optimal parameters"].append(float(mean_std_performances[0]))
         std_performances_dictionary["Optimal parameters"].append(float(mean_std_performances[1]))
-        
+
     # Return the mean performances and their standard deviations    
     return (mean_performances_dictionary,std_performances_dictionary)
 
@@ -849,7 +858,7 @@ def model_selection_wrapper(transactions_df,
                             performance_metrics_list_grid=performance_metrics_list_grid,
                             performance_metrics_list=performance_metrics_list,
                             n_jobs=n_jobs)
-    
+
     # Get performances on the test set using prequential validation
     performances_df_test=prequential_grid_search(transactions_df, classifier, 
                             input_features, output_feature,
@@ -863,13 +872,11 @@ def model_selection_wrapper(transactions_df,
                             performance_metrics_list_grid=performance_metrics_list_grid,
                             performance_metrics_list=performance_metrics_list,
                             n_jobs=n_jobs)
-    
+
     # Bind the two resulting DataFrames
     performances_df_validation.drop(columns=['Parameters','Execution time'], inplace=True)
-    performances_df=pd.concat([performances_df_test,performances_df_validation],axis=1)
-
     # And return as a single DataFrame
-    return performances_df
+    return pd.concat([performances_df_test,performances_df_validation],axis=1)
 
 
 # ### kfold_cv_with_classifier
@@ -886,28 +893,43 @@ def kfold_cv_with_classifier(classifier,
                              strategy_name="Basline classifier"):
     
     cv = sklearn.model_selection.StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=0)
-    
+
     cv_results_=sklearn.model_selection.cross_validate(classifier,X,y,cv=cv,
                                                        scoring=['roc_auc',
                                                                 'average_precision',
                                                                 'balanced_accuracy'],
                                                        return_estimator=True)
-    
+
     results=round(pd.DataFrame(cv_results_),3)
     results_mean=list(results.mean().values)
     results_std=list(results.std().values)
-    results_df=pd.DataFrame([[str(round(results_mean[i],3))+'+/-'+
-                              str(round(results_std[i],3)) for i in range(len(results))]],
-                            columns=['Fit time (s)','Score time (s)',
-                                     'AUC ROC','Average Precision','Balanced accuracy'])
+    results_df = pd.DataFrame(
+        [
+            [
+                (
+                    f'{str(round(results_mean[i],3))}+/-'
+                    + str(round(results_std[i], 3))
+                )
+                for i in range(len(results))
+            ]
+        ],
+        columns=[
+            'Fit time (s)',
+            'Score time (s)',
+            'AUC ROC',
+            'Average Precision',
+            'Balanced accuracy',
+        ],
+    )
+
     results_df.rename(index={0:strategy_name}, inplace=True)
-    
+
     classifier_0=cv_results_['estimator'][0]
-    
+
     (train_index, test_index) = next(cv.split(X, y))
     train_df=pd.DataFrame({'X1':X[train_index,0],'X2':X[train_index,1], 'Y':y[train_index]})
     test_df=pd.DataFrame({'X1':X[test_index,0],'X2':X[test_index,1], 'Y':y[test_index]})
-    
+
     return (results_df, classifier_0, train_df, test_df)
 
 
@@ -1141,24 +1163,24 @@ def get_model_selection_performance_plot(performances_df_dictionary,
                                                         'Logistic Regression', 
                                                         'Random Forest', 
                                                         'XGBoost']):
-    
-    
+
+
     (mean_performances_dictionary,std_performances_dictionary) =         model_selection_performances(performances_df_dictionary=performances_df_dictionary,
                                      performance_metric=performance_metric)
-    
-    
+
+
     # width of the bars
     barWidth = 0.3
     # The x position of bars
     r1 = np.arange(len(model_classes))
     r2 = r1+barWidth
     r3 = r1+2*barWidth
-    
+
     # Create Default parameters bars (Orange)
     ax.bar(r1, mean_performances_dictionary['Default parameters'], 
            width = barWidth, color = '#CA8035', edgecolor = 'black', 
            yerr=std_performances_dictionary['Default parameters'], capsize=7, label='Default parameters')
- 
+
     # Create Best validation parameters bars (Red)
     ax.bar(r2, mean_performances_dictionary['Best validation parameters'], 
            width = barWidth, color = '#008000', edgecolor = 'black', 
@@ -1168,7 +1190,7 @@ def get_model_selection_performance_plot(performances_df_dictionary,
     ax.bar(r3, mean_performances_dictionary['Optimal parameters'], 
            width = barWidth, color = '#2F4D7E', edgecolor = 'black', 
            yerr=std_performances_dictionary['Optimal parameters'], capsize=7, label='Optimal parameters')
- 
+
 
     # Set title, and x and y axes labels
     ax.set_ylim(ylim[0],ylim[1])
@@ -1193,23 +1215,23 @@ def get_model_selection_performances_plots(performances_df_dictionary,
                                                           'Logistic Regression', 
                                                           'Random Forest', 
                                                           'XGBoost']):
-    
+
     # Create as many graphs as there are performance metrics to display
     n_performance_metrics = len(performance_metrics_list)
     fig, ax = plt.subplots(1, n_performance_metrics, figsize=(5*n_performance_metrics,4))
-    
+
     parameter_types=['Default parameters','Best validation parameters','Optimal parameters']
-    
+
     # Plot performance metric for each metric in performance_metrics_list
     for i in range(n_performance_metrics):
-    
+
         get_model_selection_performance_plot(performances_df_dictionary, 
                                              ax[i], 
                                              performance_metrics_list[i],
                                              ylim=ylim_list[i],
                                              model_classes=model_classes
                                             )
-    
+
     ax[n_performance_metrics-1].legend(loc='upper left', 
                                        labels=parameter_types, 
                                        bbox_to_anchor=(1.05, 1),
@@ -1351,10 +1373,7 @@ class FraudDataset(torch.utils.data.Dataset):
     def __getitem__(self, index):
         'Generates one sample of data'
         # Select sample index
-        if self.y is not None:
-            return self.x[index], self.y[index]
-        else:
-            return self.x[index]
+        return (self.x[index], self.y[index]) if self.y is not None else self.x[index]
 
 def prepare_generators(training_set,valid_set,batch_size=64):
     
@@ -1378,8 +1397,7 @@ def evaluate_model(model,generator,criterion):
         # Compute Loss
         loss = criterion(y_pred.squeeze(), y_batch)
         batch_losses.append(loss.item())
-    mean_loss = np.mean(batch_losses)    
-    return mean_loss
+    return np.mean(batch_losses)
 
 class EarlyStopping:
     
@@ -1408,10 +1426,10 @@ def training_loop(model,training_generator,valid_generator,optimizer,criterion,m
 
     if apply_early_stopping:
         early_stopping = EarlyStopping(verbose=verbose,patience=patience)
-    
+
     all_train_losses = []
     all_valid_losses = []
-    
+
     #Training loop
     start_time=time.time()
     for epoch in range(max_epochs):
@@ -1427,23 +1445,24 @@ def training_loop(model,training_generator,valid_generator,optimizer,criterion,m
             loss.backward()
             optimizer.step()   
             train_loss.append(loss.item())
-        
+
         #showing last training loss after each epoch
         all_train_losses.append(np.mean(train_loss))
         if verbose:
             print('')
-            print('Epoch {}: train loss: {}'.format(epoch, np.mean(train_loss)))
+            print(f'Epoch {epoch}: train loss: {np.mean(train_loss)}')
         #evaluating the model on the test set after each epoch    
         valid_loss = evaluate_model(model,valid_generator,criterion)
         all_valid_losses.append(valid_loss)
         if verbose:
-            print('valid loss: {}'.format(valid_loss))
-        if apply_early_stopping:
-            if not early_stopping.continue_training(valid_loss):
-                if verbose:
-                    print("Early stopping")
-                break
-        
+            print(f'valid loss: {valid_loss}')
+        if apply_early_stopping and not early_stopping.continue_training(
+            valid_loss
+        ):
+            if verbose:
+                print("Early stopping")
+            break
+
     training_execution_time=time.time()-start_time
     return model,training_execution_time,all_train_losses,all_valid_losses
 
@@ -1510,10 +1529,7 @@ class FraudDatasetUnsupervised(torch.utils.data.Dataset):
     def __getitem__(self, index):
         'Generates one sample of data'
         # Select sample index
-        if self.output:
-            return self.x[index], self.x[index]
-        else:
-            return self.x[index]
+        return (self.x[index], self.x[index]) if self.output else self.x[index]
 
 
 # ### SimpleFraudMLPWithDropout and FraudMLP modules
@@ -1561,20 +1577,20 @@ class FraudMLP(torch.nn.Module):
             self.input_size = input_size
             self.hidden_size  = hidden_size
             self.p = p
-            
+
             #input to hidden
             self.fc1 = torch.nn.Linear(self.input_size, self.hidden_size)
             self.relu = torch.nn.ReLU()
-            
+
             self.fc_hidden=[]
-            for i in range(num_layers-1):
+            for _ in range(num_layers-1):
                 self.fc_hidden.append(torch.nn.Linear(self.hidden_size, self.hidden_size))
                 self.fc_hidden.append(torch.nn.ReLU())
-                
+
             #hidden to output
             self.fc2 = torch.nn.Linear(self.hidden_size, 2)
             self.softmax = torch.nn.Softmax()
-            
+
             self.dropout = torch.nn.Dropout(self.p)
             
         def forward(self, x):
@@ -1624,17 +1640,16 @@ class SimpleAutoencoder(torch.nn.Module):
             
             hidden = self.fc1(x)
             hidden = self.relu(hidden)
-            
+
             code = self.fc2(hidden)
             code = self.relu(code)
- 
+
             hidden = self.fc3(code)
             hidden = self.relu(hidden)
-            
-            output = self.fc4(hidden)
+
             #linear activation in final layer)            
-            
-            return output
+
+            return self.fc4(hidden)
 
 
 # ### Attention module
